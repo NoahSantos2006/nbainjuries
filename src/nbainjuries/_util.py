@@ -7,11 +7,33 @@ from . import _constants
 from ._exceptions import DataValidationError
 
 
-def _gen_url(timestamp: datetime) -> str:
-    URLstem_date = timestamp.date().strftime('%Y-%m-%d')
-    URLstem_time = (timestamp - timedelta(minutes=30)).time().strftime('%I%p')
-    return _constants.urlstem_injreppdf.replace('*', URLstem_date + '_' + URLstem_time)
+def _gen_urls(timestamp: datetime) -> list[str]:
 
+    urls = []
+    date_str = timestamp.strftime('%Y-%m-%d')
+
+    # -------- NEW FORMAT (15-min cadence) --------
+    minute = (timestamp.minute // 15) * 15
+    rounded_ts = timestamp.replace(minute=minute, second=0, microsecond=0)
+    time_new = rounded_ts.strftime('%I_%M%p')
+
+    urls.append(
+        _constants.urlstem_injreppdf.replace(
+            '*', f"{date_str}_{time_new}"
+        )
+    )
+
+    # -------- LEGACY FORMAT (hourly, no minutes) --------
+    legacy_ts = timestamp - timedelta(minutes=30)
+    time_legacy = legacy_ts.strftime('%I%p')
+
+    urls.append(
+        _constants.urlstem_injreppdf.replace(
+            '*', f"{date_str}_{time_legacy}"
+        )
+    )
+
+    return urls
 
 def _gen_filepath(timestamp: datetime, directorypath: str | PathLike) -> str:
     URLstem_date = timestamp.date().strftime('%Y-%m-%d')
@@ -20,13 +42,11 @@ def _gen_filepath(timestamp: datetime, directorypath: str | PathLike) -> str:
     injrep_dlpath = path.join(directorypath, filename)
     return injrep_dlpath
 
-
 def _pagect_localpdf(filepath: str | PathLike):
     with open(filepath, mode='rb') as injrepfile:
         pdf_reader = PyPDF2.PdfReader(injrepfile)
         pdf_numpgs = len(pdf_reader.pages)
         return pdf_numpgs
-
 
 def __concat_injreppgs(dflist_headpg: list, dflist_otherpgs: list) -> pd.DataFrame:
     list_dfparts = [dflist_headpg[0]]
@@ -41,7 +61,6 @@ def __concat_injreppgs(dflist_headpg: list, dflist_otherpgs: list) -> pd.DataFra
         df_x.at[(df_x.shape[0] - 1), 'LastonPgBoundary'] = True
     df_injrepconcat = pd.concat(list_dfparts, ignore_index=True)
     return df_injrepconcat
-
 
 def __clean_injrep(dfinjrep_x: pd.DataFrame) -> pd.DataFrame:
     dfcleaning_x = dfinjrep_x.copy()
@@ -161,7 +180,6 @@ def __clean_injrep(dfinjrep_x: pd.DataFrame) -> pd.DataFrame:
     dfcleaning_xfinal.sort_index(inplace=True)
     dfcleaning_xfinal.reset_index(inplace=True, drop=True)
     return dfcleaning_xfinal
-
 
 def _validate_headers(df_headpg: pd.DataFrame):
     pg1cols_norm = [re.sub(r'[\W_]+', '', str(colx).strip().lower()) for colx in df_headpg.columns]

@@ -2,7 +2,7 @@ from os import PathLike
 from datetime import datetime
 from . import _constants, _parser_asy
 from ._exceptions import URLRetrievalError
-from ._util import _gen_url, _gen_filepath
+from ._util import _gen_urls, _gen_filepath
 from aiohttp import ClientSession
 
 
@@ -73,7 +73,7 @@ async def check_reportvalid(timestamp: datetime, session: ClientSession = None, 
 def gen_url(timestamp: datetime) -> str:
     """
     """
-    return _gen_url(timestamp)
+    return _gen_urls(timestamp)
 
 
 def gen_filepath(timestamp: datetime, directorypath: str | PathLike) -> str:
